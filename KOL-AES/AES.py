@@ -1,4 +1,5 @@
 from random import randint
+import tkinter
 import galois
 import secrets
 from bitarray import bitarray
@@ -14,17 +15,17 @@ from PIL import ImageTk,Image
 # word: bitarray(32)
 
 
-### Variablen
+
+
+############ KONSTANTEN ############
 
 Nb = 4 # word-zahl im block; für AES 4
 Nk = 4 # word-zahl im schlüssel (4, 6 oder 8)
 Nr = Nk + 6 # rundenzahl
 
-exp_key = [bitarray('0'*32) for i in range(Nb*(Nr+1))]
-
 GF8 = galois.GF(2**8, 'x^8+x^4+x^3+x+1')
 GF1 = galois.GF(2)
-GF32 = galois.GF(2**32)
+GF32 = galois.GF(2**32, 'x^32 + x^15 + x^9 + x^7 + x^4 + x^3 + 1')
 
 # Für SubBytes
 A = [[1,1,1,1,1,0,0,0],
@@ -61,7 +62,10 @@ invB = [[14,9,13,11],
         [9,13,11,14]]
 invB = GF8(invB)
 
-### Funktionen
+
+
+
+############ KLEINE FUNKTIONEN ############
 
 def KeyExpansion(shortk, w):
     temp = bitarray(32)
@@ -363,6 +367,11 @@ def Block_to_num(block):
     num = int(bittext,2)
     return num
 
+
+
+
+############ CIPHERFUNKTIONEN ############
+
 def Cipher(inbytes, keywords, mode, inve):
     print('\n\nBINARY INPUT:',inbytes)
     nbkeywords = [[bitarray('0'*32) for q in range(Nb)] for w in range(Nr+1)]
@@ -529,11 +538,15 @@ def InvCipher(inbytes, keywords, mode, inve):
     return outbytes
 
 
+
+
+############ MODI ############
+
 ## ECB
 def ECB(input, hextext, encdec, shortkey):
     bitshortkey = Hex_to_key(shortkey)
-    exp_key = [bitarray('0'*32) for i in range(Nb*(Nr+1))]
-    longkey = KeyExpansion(bitshortkey, exp_key)
+    template_key = [bitarray('0'*32) for i in range(Nb*(Nr+1))]
+    longkey = KeyExpansion(bitshortkey, template_key)
     if(encdec == 'dec'):
         binblocks = Hex_to_bin_blocks(input)
     elif(hextext == 'text'):
@@ -563,8 +576,8 @@ def ECB(input, hextext, encdec, shortkey):
 def CBC(input, hextext, encdec, key, iv):
     bitiv = Hex_to_iv(iv)
     bitkey = Hex_to_key(key)
-    exp_key = [bitarray('0'*32) for i in range(Nb*(Nr+1))]
-    longkey = KeyExpansion(bitkey, exp_key)
+    template_key = [bitarray('0'*32) for i in range(Nb*(Nr+1))]
+    longkey = KeyExpansion(bitkey, template_key)
     if(encdec == 'dec'):
         binblocks = Hex_to_bin_blocks(input)
     elif(hextext == 'text'):
@@ -597,8 +610,8 @@ def CBC(input, hextext, encdec, key, iv):
 ## Counter Mode
 def Counterm(input, hextext, encdec, key, nonce):
     bitkey = Hex_to_key(key)
-    exp_key = [bitarray('0'*32) for i in range(Nb*(Nr+1))]
-    longkey = KeyExpansion(bitkey, exp_key)
+    template_key = [bitarray('0'*32) for i in range(Nb*(Nr+1))]
+    longkey = KeyExpansion(bitkey, template_key)
     if(encdec == 'dec'):
         binblocks = Hex_to_bin_blocks(input)
     elif(hextext == 'text'):
@@ -627,67 +640,13 @@ def Counterm(input, hextext, encdec, key, nonce):
     
     return(output)
 
-### Performance
-
-# ECB
-# ECBinput = 'The quick brown fox jumps over the lazy dog'
-# ECBshortkey = '89debd08096f31abcaf0d6f6806274bd'
-# ECBstopwatch = Stopwatch()
-# ECBstopwatch.start()
-# res = ECB(ECBinput, 'text', 'enc', ECBshortkey)
-# ECBstopwatch.stop
-# print(res, ECBstopwatch.elapsed)
-
-# ECBshortkey = '89debd08096f31abcaf0d6f6806274bd'
-# ECBstopwatch = Stopwatch()
-# ECBstopwatch.start()
-# res = ECB(res, 'text', 'dec', ECBshortkey)
-# ECBstopwatch.stop
-# print(res, ECBstopwatch.elapsed)
 
 
-# CBC
-# CBCinput = 'The quick brown fox jumps over the lazy dog'
-# CBCshortkey = '89debd08096f31abcaf0d6f6806274bd'
-# CBCiv = '50e6f5dba34a1a3c752bb840b6879060'
-# CBCstopwatch = Stopwatch()
-# CBCstopwatch.start()
-# res = CBC(CBCinput, 'text', 'enc', CBCshortkey, CBCiv)
-# CBCstopwatch.stop
-# print(res, CBCstopwatch.elapsed)
 
-# CBCshortkey = '89debd08096f31abcaf0d6f6806274bd'
-# CBCiv = '50e6f5dba34a1a3c752bb840b6879060'
-# CBCstopwatch = Stopwatch()
-# CBCstopwatch.start()
-# res = CBC(res, 'text', 'dec', CBCshortkey, CBCiv)
-# CBCstopwatch.stop
-# print(res, CBCstopwatch.elapsed)
-
-# Counter
-# CNTRinput = 'The quick brown fox jumps over the lazy dog'
-# CNTRshortkey = '89debd08096f31abcaf0d6f6806274bd'
-# CNTRnonce = '181736720380177676749156804959900430112'
-# CNTRstopwatch = Stopwatch()
-# CNTRstopwatch.start()
-# res = CBC(CNTRinput, 'text', 'enc', CNTRshortkey, CNTRnonce)
-# CNTRstopwatch.stop
-# print(res, CNTRstopwatch.elapsed)
-
-# CNTRshortkey = '89debd08096f31abcaf0d6f6806274bd'
-# CNTRnonce = '181736720380177676749156804959900430112'
-# CNTRstopwatch = Stopwatch()
-# CNTRstopwatch.start()
-# res = CBC(res, 'text', 'dec', CNTRshortkey, CNTRnonce)
-# CNTRstopwatch.stop
-# print(res, CNTRstopwatch.elapsed)
-
-
-### GUI
+############ GRAPHICAL USER INTERFACE ############
 
 root = Tk()
 root.title('AES Implementation')
-
 
 def Check_and_run(mode, text, hextext, encdec, key, iv, nonce):
     global enctext_entry
@@ -828,7 +787,7 @@ decbutton = ttk.Button(mainframe, width=7, text='Entschlüsseln', command=(lambd
 decbutton.grid(column=1, row=6, sticky=(N, W, E, S), columnspan=3)
 
 def KeyGen():
-    # Siehe https://stackoverflow.com/questions/10411085/converting-integer-to-binary-in-python !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! NOCH NICHT IN DER KOL!
+    # Siehe https://stackoverflow.com/questions/10411085/converting-integer-to-binary-in-python
     randkey = [[bitarray(f'{(secrets.randbits(8)):08b}') for i in range(Nk*4)]]
     randkeyhex = Bin_blocks_to_Hex(randkey)
     randiv = [[bitarray(f'{(secrets.randbits(8)):08b}') for i in range(4*Nb)]]
@@ -954,3 +913,70 @@ root.mainloop()
 for child in mainframe.winfo_children():
     child.grid_configure(padx=5, pady=5)
 dectext_entry.focus()
+
+
+
+
+############ VERWENDETE COMMANDS UND TESTS ############
+
+
+### PyInstaller; im Windows-CMD-Fenster eingegeben
+# pyinstaller AES.py --add-data "*.png" --windowed
+
+
+### python-stopwatch; können durch Entfernen der Hashtags aktiviert werden. Vorher muss Zeile 911 auskommentiert werden.
+
+## ECB
+# ECBinput = 'The quick brown fox jumps over the lazy dog'
+# ECBshortkey = '89debd08096f31abcaf0d6f6806274bd'
+# ECBstopwatch = Stopwatch()
+# ECBstopwatch.start()
+# res = ECB(ECBinput, 'text', 'enc', ECBshortkey)
+# ECBstopwatch.stop
+# print(res, ECBstopwatch.elapsed)
+
+# res = '16f2c2eb4306c016ac9c45bfb07a97d241792573e48c612b1b62ae2672ca931a8955b6147e9a186fcade1591596480be'
+# ECBshortkey = '89debd08096f31abcaf0d6f6806274bd'
+# ECBstopwatch = Stopwatch()
+# ECBstopwatch.start()
+# res = ECB(res, 'text', 'dec', ECBshortkey)
+# ECBstopwatch.stop
+# print(res, ECBstopwatch.elapsed)
+
+## CBC
+# CBCinput = 'The quick brown fox jumps over the lazy dog'
+# CBCshortkey = '89debd08096f31abcaf0d6f6806274bd'
+# CBCiv = '50e6f5dba34a1a3c752bb840b6879060'
+# CBCstopwatch = Stopwatch()
+# CBCstopwatch.start()
+# res = CBC(CBCinput, 'text', 'enc', CBCshortkey, CBCiv)
+# CBCstopwatch.stop
+# print(res, CBCstopwatch.elapsed)
+
+# res = 'a7fa324e8de4b7183bce72d882520756c033a17bd8b4debc4996ffff7294806990c66bf042705706bb695d46423f4ef3'
+# CBCshortkey = '89debd08096f31abcaf0d6f6806274bd'
+# CBCiv = '50e6f5dba34a1a3c752bb840b6879060'
+# CBCstopwatch = Stopwatch()
+# CBCstopwatch.start()
+# res = CBC(res, 'text', 'dec', CBCshortkey, CBCiv)
+# CBCstopwatch.stop
+# print(res, CBCstopwatch.elapsed)
+
+## Counter Mode
+# CNTRinput = 'The quick brown fox jumps over the lazy dog'
+# CNTRshortkey = '89debd08096f31abcaf0d6f6806274bd'
+# CNTRnonce = '181736720380177676749156804959900430112'
+# CNTRstopwatch = Stopwatch()
+# CNTRstopwatch.start()
+# res = CBC(CNTRinput, 'text', 'enc', CNTRshortkey, CNTRnonce)
+# CNTRstopwatch.stop
+# print(res, CNTRstopwatch.elapsed)
+
+# res = '82b10fd820c0169f153888cb9a97afad6c442931987dc5cb79879ba95839006ee07e97151a4fcf41d3238d851b9f587e'
+# CNTRshortkey = '89debd08096f31abcaf0d6f6806274bd'
+# CNTRnonce = '181736720380177676749156804959900430112'
+# CNTRstopwatch = Stopwatch()
+# CNTRstopwatch.start()
+# res = CBC(res, 'text', 'dec', CNTRshortkey, CNTRnonce)
+# CNTRstopwatch.stop
+# print(res, CNTRstopwatch.elapsed)
