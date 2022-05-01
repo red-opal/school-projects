@@ -74,28 +74,19 @@ def KeyExpansion(shortk, w):
             nzeile = n//8
             nbit = n%8
             w[i][n] = shortk[i*4+nzeile][nbit]
-    print('Key to w:', w)
     for m in range(Nk, Nb*(Nr+1)):
-        print(f'\n\nKEY ROUND: {m}')
         temp = w[m-1]
-        print(f'w[m-1] (Previous word): {w[m-1]}')
         if (m % Nk == 0):
             subrot = SubWord(RotWord(temp))
-            print(f'\nsubrot: {subrot}')
             gfsubrot = GF32(int.from_bytes(subrot, 'big'))
-            print(f"Rcon data: {m}//{Nk} - 1 = {m//Nk - 1}")
             rcon = Rcon(m//Nk - 1)
             gfrcon = GF32(int.from_bytes(rcon, 'big'))
             # Siehe https://stackoverflow.com/questions/10411085/converting-integer-to-binary-in-python
             temp = bitarray(f'{(gfsubrot + gfrcon):032b}')
-            print(f'temp / subrot xor rcon: {temp}\n')
         elif (Nk > 6 & i%Nk == 4):
             temp = SubWord(temp)
-        print('w[m-Nk] and temp:', w[m-Nk], temp)
         for x, e in enumerate(w[m]):
             w[m][x] = int(GF1(int(w[m-Nk][x])) + GF1(int(temp[x])))
-        print('new w[m]:', w[m])
-    print('\n\nOriginal Key:', shortk, '\n\nNew Key:', w)
     return w
 
 def RotWord(word):
@@ -107,7 +98,6 @@ def SubWord(word):
     for i in range(len(word)//8):
         w = word[i*8:(i*8+8)]
         subword.append(w)
-    print(f'Sending to SubBytes: {subword}')
     subword = SubBytes(subword)
     joinsubword = bitarray(32)
     for i in range(4):
@@ -185,23 +175,16 @@ def Text_to_bin_blocks(text):
     bits = bin(int.from_bytes(text.encode('utf-8', 'surrogatepass'), 'big'))[2:]
     bittext = bits.zfill(8 * ((len(bits) + 7) // 8))
     binary = bitarray(bittext)
-    print(f"\n\nBinary representation of input: {binary}\
-\n(Length {len(binary)})")
     binblocks = [[bitarray('00000000') for i in range(16)]
                  for k in range((len(binary)//128)+1)]
-    print(binblocks)
     for i in range((len(binary)//128)+1):
-        print(f"\n\nProcessing block {i}")
         w = binary[i*128:(i*128+128)] # w = block i of binary
-        print('block-length bitarray w:',w)
         for n in range(16):
             for o in range(8):
                 if w[n*8:(n*8+8)] == bitarray():
                     break
                 binblocks[i][n][o]=w[n*8:(n*8+8)][o] # bit of block = bit of w
-            print(f"Byte {n} of block:", binblocks[i][n])
         # binblocks[i] = block
-        print(f'Block {i}:', binblocks[i])
     return binblocks
 
 def Bin_blocks_to_Text(binblocks):
@@ -225,25 +208,16 @@ def Hex_to_bin_blocks(hex):
         blockcnt = (len(hex)//32)+1
     # Siehe https://stackoverflow.com/questions/10411085/converting-integer-to-binary-in-python
     bittext = f'{int(hex, 16):0{blockcnt*128}b}'
-    print(bittext)
     binary = bitarray(bittext)
-    print(f"\n\nBinary representation of input: {binary} \
-            \n(Length {len(binary)})")
     binblocks = [[bitarray('00000000') for i in range(16)]
                  for k in range(blockcnt)]
-    print(binblocks)
     for i in range(blockcnt):
-        print(f"\n\nProcessing block {i}")
         w = binary[i*128:(i*128+128)] # w = block i of binary
-        print('block-length bitarray w:',w)
         for n in range(4*Nb):
             for o in range(8):
                 if len(w[n*8:(n*8+8)]) < 8:
                     break
                 binblocks[i][n][o]=w[n*8:(n*8+8)][o] # bit of block = bit of w
-            print(f"Byte {n} of block:", binblocks[i][n])
-        # binblocks[i] = block
-        print(f'Block {i}:', binblocks[i])
     return binblocks
 
 def Bin_blocks_to_Hex(binblocks):
@@ -373,87 +347,32 @@ def Block_to_num(block):
 ############ CIPHERFUNKTIONEN ############
 
 def Cipher(inbytes, keywords, mode, inve):
-    print('\n\nBINARY INPUT:',inbytes)
     nbkeywords = [[bitarray('0'*32) for q in range(Nb)] for w in range(Nr+1)]
     for e in range(Nr+1):
         for r in range(Nb):
             nbkeywords[e][r]=keywords[e*Nb+r]
     state = inbytes
     if(mode == 'CBC'):
-        print('\n\nCBC XOR')
-        bittext = ''
-        for y in state:
-            if y == bitarray():
-                break
-            bittext = bittext +str(y[0])+str(y[1])+str(y[2])+str(y[3]) \
-                              +str(y[4])+str(y[5])+str(y[6])+str(y[7])
-        print('STATE:',bittext)
-        bittext = ''
-        for y in inve:
-            if y == bitarray():
-                break
-            bittext = bittext +str(y[0])+str(y[1])+str(y[2])+str(y[3]) \
-                              +str(y[4])+str(y[5])+str(y[6])+str(y[7])
-        print('IV:   ',bittext)
         for i in range(4*Nb):
             stateint = int.from_bytes(state[i], "big")
             ivint = int.from_bytes(inve[i], "big")
             ivxorint = GF8(stateint)+GF8(ivint)
             # Siehe https://stackoverflow.com/questions/10411085/converting-integer-to-binary-in-python
             state[i] = bitarray(f'{int(ivxorint):08b}')
-        bittext = ''
-        for y in state:
-            if y == bitarray():
-                break
-            bittext = bittext +str(y[0])+str(y[1])+str(y[2])+str(y[3]) \
-                              +str(y[4])+str(y[5])+str(y[6])+str(y[7])
-        print('RES:  ',bittext)
 
     # Cipher
     for i in range(Nr+1):
-        print(f'\n\nCIPHER ROUND {i}/{Nr}')
         if(i != 0):
             state = SubBytes(state)
-            bittext = ''
-            for y in state:
-                if y == bitarray():
-                    break
-                bittext = bittext +str(y[0])+str(y[1])+str(y[2])+str(y[3]) \
-                                  +str(y[4])+str(y[5])+str(y[6])+str(y[7])
-            print(f'RESULT SUBBYTES ROUND {i}: {bittext}')
             state = ShiftRows(state)
-            bittext = ''
-            for y in state:
-                if y == bitarray():
-                    break
-                bittext = bittext +str(y[0])+str(y[1])+str(y[2])+str(y[3]) \
-                                  +str(y[4])+str(y[5])+str(y[6])+str(y[7])
-            print(f'RESULT SHIFTROWS ROUND {i}: {bittext}')
             if(i != Nr):
                 state = MixColumns(state)
-                bittext = ''
-                for y in state:
-                    if y == bitarray():
-                        break
-                    bittext = \
-                    bittext + str(y[0])+str(y[1])+str(y[2])+str(y[3]) \
-                            + str(y[4])+str(y[5])+str(y[6])+str(y[7])
-                print(f'RESULT MIXCOLUMNS ROUND {i}: {bittext}')
         state = AddRoundKey(state, nbkeywords[i])
-        bittext = ''
-        for y in state:
-            if y == bitarray():
-                break
-            bittext = bittext +str(y[0])+str(y[1])+str(y[2])+str(y[3]) \
-                              +str(y[4])+str(y[5])+str(y[6])+str(y[7])
-        print(f'RESULT KEY ADDING ROUND {i}: {bittext}')
-        print(f'RESULT CIPHER ROUND {i}: {bittext}')
     
     outbytes = state
     return outbytes
 
 def InvCipher(inbytes, keywords, mode, inve):
-    print('\n\nBINARY INPUT:',inbytes)
     nbkeywords = [[bitarray('0'*32) for q in range(Nb)] for w in range(Nr+1)]
     for e in range(Nr+1):
         for r in range(Nb):
@@ -461,65 +380,14 @@ def InvCipher(inbytes, keywords, mode, inve):
     state = inbytes
     i = Nr
     for i in range(Nr,-1,-1):
-        print(f'\n\nINVERSE CIPHER ROUND {i}/{Nr}')
         if(i != Nr):
             state = InvShiftRows(state)
-            bittext = ''
-            for y in state:
-                if y == bitarray():
-                    break
-                bittext = bittext +str(y[0])+str(y[1])+str(y[2])+str(y[3]) \
-                                  +str(y[4])+str(y[5])+str(y[6])+str(y[7])
-            print(f'RESULT INVERSE SHIFTROWS ROUND {i}: {bittext}')
             state = InvSubBytes(state)
-            bittext = ''
-            for y in state:
-                if y == bitarray():
-                    break
-                bittext = bittext +str(y[0])+str(y[1])+str(y[2])+str(y[3]) \
-                                  +str(y[4])+str(y[5])+str(y[6])+str(y[7])
-            print(f'RESULT INVERSE SUBBYTES ROUND {i}: {bittext}')
         state = AddRoundKey(state, nbkeywords[i])
-        bittext = ''
-        for y in state:
-            if y == bitarray():
-                break
-            bittext = bittext +str(y[0])+str(y[1])+str(y[2])+str(y[3]) \
-                              +str(y[4])+str(y[5])+str(y[6])+str(y[7])
-        print(f'RESULT KEY ADDING ROUND {i}: {bittext}')
         if((i != 0) & (i != Nr)):
             state = InvMixColumns(state)
-            bittext = ''
-            for y in state:
-                if y == bitarray():
-                    break
-                bittext = bittext +str(y[0])+str(y[1])+str(y[2])+str(y[3]) \
-                                  +str(y[4])+str(y[5])+str(y[6])+str(y[7])
-            print(f'RESULT INVERSE MIXCOLUMNS ROUND {i}: {bittext}')
-        bittext = ''
-        for y in state:
-            if y == bitarray():
-                break
-            bittext = bittext +str(y[0])+str(y[1])+str(y[2])+str(y[3]) \
-                              +str(y[4])+str(y[5])+str(y[6])+str(y[7])
-        print(f'RESULT INVERSE CIPHER ROUND {i}: {bittext}')
     
     if(mode == 'CBC'):
-        print('\n\nCBC XOR')
-        bittext = ''
-        for y in state:
-            if y == bitarray():
-                break
-            bittext = bittext +str(y[0])+str(y[1])+str(y[2])+str(y[3]) \
-                              +str(y[4])+str(y[5])+str(y[6])+str(y[7])
-        print('STATE:',bittext)
-        bittext = ''
-        for y in inve:
-            if y == bitarray():
-                break
-            bittext = bittext +str(y[0])+str(y[1])+str(y[2])+str(y[3]) \
-                              +str(y[4])+str(y[5])+str(y[6])+str(y[7])
-        print('IV:   ',bittext)
         for p in range(4*Nb):
             stateint = int.from_bytes(state[p], "big")
             ivint = int.from_bytes(inve[p], "big")
@@ -527,14 +395,7 @@ def InvCipher(inbytes, keywords, mode, inve):
             # Siehe https://stackoverflow.com/questions/10411085/converting-integer-to-binary-in-python
             state[p] = bitarray(f'{int(ivxorint):08b}')
         bittext = ''
-        for y in state:
-            if y == bitarray():
-                break
-            bittext = bittext +str(y[0])+str(y[1])+str(y[2])+str(y[3]) \
-                              +str(y[4])+str(y[5])+str(y[6])+str(y[7])
-        print('RES:  ',bittext)
     outbytes = state
-    print('\n\nOUT:',outbytes)
     return outbytes
 
 
@@ -553,16 +414,12 @@ def ECB(input, hextext, encdec, shortkey):
         binblocks = Text_to_bin_blocks(input)
     elif(hextext == 'hex'):
         binblocks = Hex_to_bin_blocks(input)
-    else:
-        print("Input broken")
     
     if(encdec == 'enc'):
         for i, block in enumerate(binblocks):
-            print(f'\n\nBLOCK {i}/{len(binblocks)-1}')
             binblocks[i] = Cipher(block, longkey, 'ECB', 'none')
     elif(encdec == 'dec'):
         for g, block in enumerate(binblocks):
-            print(f'\n\nBLOCK {g}/{len(binblocks)-1}')
             binblocks[g] = InvCipher(block, longkey, 'ECB', 'none')
     
     if((encdec == 'dec') & (hextext == 'text')):
@@ -584,17 +441,13 @@ def CBC(input, hextext, encdec, key, iv):
         binblocks = Text_to_bin_blocks(input)
     elif(hextext == 'hex'):
         binblocks = Hex_to_bin_blocks(input)
-    else:
-        print("Input broken")
     
     if(encdec == 'enc'):
         for i, block in enumerate(binblocks):
-            print(f'\n\nBLOCK {i}/{len(binblocks)-1}')
             binblocks[i] = Cipher(block, longkey, 'CBC', bitiv)
             bitiv = binblocks[i]
     elif(encdec == 'dec'):
         for g, block in enumerate(binblocks):
-            print(f'\n\nBLOCK {g}/{len(binblocks)-1}')
             # Siehe https://stackoverflow.com/questions/264575/python-one-variable-equals-another-variable-when-it-shouldnt
             tempiv = copy.deepcopy(block)
             binblocks[g] = InvCipher(block, longkey, 'CBC', bitiv)
@@ -618,16 +471,13 @@ def Counterm(input, hextext, encdec, key, nonce):
         binblocks = Text_to_bin_blocks(input)
     elif(hextext == 'hex'):
         binblocks = Hex_to_bin_blocks(input)
-    else:
-        print("Input broken")
     
     for i, e in enumerate(binblocks):
-        print(f'\n\nBLOCK {i}/{len(binblocks)-1}')
         resblock = [bitarray('0'*8) for i in range(4*Nb)]
         nonceblock = Num_to_block(nonce+i+1)
         encnonce = Cipher(nonceblock, longkey, 'Counter', 'none')
         for q in range(4*Nb):
-            blocksum = GF8(int.from_bytes(binblocks[i][q], "big")) \
+            blocksum = GF8(int.from_bytes(binblocks[i][q],"big")) \
                      + GF8(int.from_bytes(encnonce[q],"big"))
             # Siehe https://stackoverflow.com/questions/10411085/converting-integer-to-binary-in-python
             resblock[q] = bitarray(f'{int(blocksum):08b}')
@@ -807,7 +657,7 @@ def KeyGen():
 def Settings():
     global Nk
     newwindow = Toplevel()
-    settingslabel = Label(newwindow, justify='left', text='Schlüssellänge verändern').grid(column=0, row=0, sticky=(N, W))
+    settingslabel = Label(newwindow, justify='left', text='Schlüssellänge verändern').grid(column=0, row=0, columnspan=3, sticky=(N, W))
     
     Nk128 = Radiobutton(newwindow, text='128', variable=Nk, value=4)
     Nk128.grid(column=0, row=1, stick=(N, W, E, S))
@@ -841,8 +691,8 @@ Nb ist immer gleich 4; Nk kann gleich 4, 6 oder 8 sein; und Nr ist immer gleich 
 
 '''3.: Schlüsselverlängerung
 Der Schlüssel wird auf eine Länge von 1408, 1664 oder 1920 Bits erweitert. Der erste Teil des neuen Schlüssels ist dem alten Schlüssel genau gleich.
-Die restlichen Words werden ermittelt, in dem das Word davor mit einer Konstante Rcon in einem endlichen Körper addiert wird, die von der Wordzahl abhängig ist.
-Jedes Nk-te Word wird dabei zuerst um acht Stellen bitweise rotiert und dann durch die Funktion SubBytes gegeben (Siehe 5.: SubBytes).''',
+Die restlichen Words (Ein Word = 4 Bytes = 32 Bits) werden ermittelt, in dem das Word davor mit einer Konstante Rcon in einem endlichen Körper addiert wird, die von der Wordzahl abhängig ist.
+Jedes Nk-te Word wird dabei zuerst um acht Stellen bitweise rotiert und dann in die Funktion SubBytes gegeben (Siehe 5.: SubBytes).''',
 
 '''4.: AES-Algorithmus
 Für die Ver- und Entschlüsselung wird der Schlüssel in sogenannte Rundenschlüssel aufgeteilt und der Klartext wird in mehreren Runden verarbeitet.
@@ -896,8 +746,6 @@ def Tutor():
 
 def CycleBack(label,img):
     global ttindex
-    global tutortexts
-    global tutorimages
     ttindex = (ttindex - 1) % 7
     label.config(text=tutortexts[ttindex])
     img.config(image=tutorimages[ttindex])
