@@ -812,10 +812,10 @@ def Settings():
     Nk128 = Radiobutton(newwindow, text='128', variable=Nk, value=4)
     Nk128.grid(column=0, row=1, stick=(N, W, E, S))
 
-    Nk192 = Radiobutton(newwindow, text='192', variable=modeselector, value=6)
+    Nk192 = Radiobutton(newwindow, text='192', variable=Nk, value=6)
     Nk192.grid(column=1, row=1, stick=(N, W, E, S))
 
-    Nk256 = Radiobutton(newwindow, text='256', variable=modeselector, value=8)
+    Nk256 = Radiobutton(newwindow, text='256', variable=Nk, value=8)
     Nk256.grid(column=2, row=1, stick=(N, W, E, S))
 
 tutortexts = ['''1.: Endliche Körper
